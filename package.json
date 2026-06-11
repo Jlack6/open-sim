@@ -1,0 +1,41 @@
+{
+  "name": "open-sim",
+  "version": "0.2.0",
+  "description": "Custom MCP server that controls the iOS Simulator via simctl and XCUITest.",
+  "type": "module",
+  "bin": {
+    "open-sim": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:driver": "bash scripts/build-driver.sh",
+    "build:all": "npm run build:driver && npm run build",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "ios",
+    "simulator",
+    "simctl",
+    "open-sim",
+    "cursor"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
