@@ -66,6 +66,82 @@ Claude: boot_device → launch_app / open_url / ui_tap
 
 After `launch_app`, the bundle ID is remembered — you don't need to repeat it for UI tools.
 
+## App knowledge & skills (faster repeat automation)
+
+open-sim can drive any app with zero hardcoding, but **exploring an app from scratch every time is slow** — each `describe_ui` call takes several seconds, and the agent may need many of them to find the right button or flow.
+
+This repo adds a **local knowledge layer** and two **Cursor skills** so the agent learns an app once and reuses that context on every future task.
+
+### How it fits together
+
+```
+First time with an app          Every task after that
+        ↓                                ↓
+   learn-app skill              read knowledge/apps/<app>.md
+   explore via open-sim          follow documented flows
+   save to knowledge/            fewer describe_ui calls
+        ↓                                ↓
+   update-knowledge-from-chat    patch doc after each session
+   (merge new learnings)          agent keeps getting smarter
+```
+
+| Piece | Location | In git? |
+|-------|----------|---------|
+| App maps (flows, labels, gotchas) | `knowledge/apps/<slug>.md` | No — gitignored, local to your machine |
+| **learn-app** skill | `.cursor/skills/learn-app/` | Yes — shared with the repo |
+| **update-knowledge-from-chat** skill | `.cursor/skills/update-knowledge-from-chat/` | Yes — shared with the repo |
+
+Knowledge files read like **test cases**: launch path, tab bar, step-by-step flows (`tap Add` → `type` → `Create Reminder`), exact labels and identifiers, and gotchas (e.g. MCP timeouts that still succeeded).
+
+### Why it speeds things up
+
+| Without knowledge | With knowledge |
+|-------------------|----------------|
+| `describe_ui` on every screen to find tabs and buttons | Jump straight to documented `label` / `identifier` |
+| Agent reasons through UI from scratch each session | Follow a known flow (e.g. "create timed reminder") |
+| Same mistakes repeated (duplicate taps after timeouts) | Gotchas captured once — verify before retrying |
+| ~4–7s per `describe_ui` × many screens | Often 2–4 targeted steps with one verify at the end |
+
+Example: *"Go to Scrib and make a reminder to say hi to mom"* — with `knowledge/apps/scrib.md`, the agent launches Scrib, taps Reminders → Add, types the text, taps Create Reminder. Without it, the agent must discover the tab bar, the Add button, the text field type, and the confirm button via multiple round-trips.
+
+### Skills
+
+#### learn-app
+
+**When:** First time mapping an app, or a full refresh.
+
+**Prompt examples:**
+- "Learn the Scrib app"
+- "Map out Settings and save it to knowledge"
+
+The agent uses open-sim to explore tabs, screens, and key flows, then writes `knowledge/apps/<slug>.md` (e.g. `scrib` for Scrib).
+
+#### update-knowledge-from-chat
+
+**When:** After a session where the agent did something new — discovered a flow, hit a new screen, or learned a gotcha.
+
+**Prompt examples:**
+- "Update Scrib knowledge from what we just did"
+- `/update-knowledge-from-chat` for the Scrib app
+
+The agent **merges** deltas into the existing file (new flows, elements, corrections) — it does not replace the whole doc.
+
+### Using knowledge day to day
+
+1. **Teach an app once** — ask the agent to learn an app you automate often.
+2. **Give task prompts normally** — e.g. "In Scrib, delete the reminder and add a note that says hello."
+3. **Agent reads knowledge first** — if `knowledge/apps/scrib.md` exists, it plans from that file.
+4. **Update after novel work** — ask to update knowledge when the agent figured out something new (edit mode, delete flow, etc.).
+
+Knowledge is **local only** (`knowledge/` is in `.gitignore`). Each developer builds their own maps for the apps they use. Skills in `.cursor/skills/` are committed so everyone gets the same workflows.
+
+### Example prompts (with knowledge)
+
+- "Learn the Scrib app and save it to knowledge."
+- "Go to Scrib and set a reminder to call mom in 5 minutes."
+- "Update Scrib knowledge from what we just did."
+- "In Scrib, delete the current reminder and add a scrib that says third times the try."
+
 ## Performance (persistent driver)
 
 The XCUITest runner is the slow part of UI automation — a normal `xcodebuild test`
@@ -91,11 +167,17 @@ for debugging. Batch related actions with `ui_act` to share a single round-trip.
 
 ## Example prompts
 
+**Simulator (generic):**
 - "Boot iPhone 17 Pro, show me what's on the home screen."
 - "Tap the Settings app, describe what's on screen, then toggle the first switch you find."
 - "Launch com.example.MyApp, type hello@example.com into the email field, and screenshot."
 - "Swipe left on the home screen, tap Safari, and describe the page."
 - "Set dark mode, override status bar to 9:41 with full battery, screenshot."
+
+**App knowledge:**
+- "Learn the Scrib app."
+- "Go to Scrib and make a reminder to say hi to mom."
+- "Update Scrib knowledge from this chat."
 
 ## Tools
 
