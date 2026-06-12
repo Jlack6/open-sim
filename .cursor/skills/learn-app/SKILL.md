@@ -59,7 +59,7 @@ For each important user journey, execute it once and record exact steps:
 - Confirm/save button label
 - Expected result (what `describe_ui` shows after)
 
-Think like test cases: **Given → When → Then**.
+Think in steps: **Given → When → Then** (context, actions, expected UI after).
 
 Example flow to capture:
 
@@ -76,7 +76,7 @@ Create `knowledge/apps/` if missing.
 
 ### 5. Report to user
 
-Summarize: screens found, flows documented, file path. Note gaps (permissions dialogs, login, paywalls not explored).
+Summarize: screens found, flows documented, knowledge file path. Note gaps (permissions dialogs, login, paywalls not explored).
 
 ## Using knowledge during automation
 
@@ -84,8 +84,9 @@ Before any app-specific open-sim task:
 
 1. Glob `knowledge/apps/*.md`
 2. Match by slug, display name, or bundle ID
-3. If found: follow documented launch path and flows; only `describe_ui` when the doc is ambiguous or the step fails
-4. If missing: tell user no map exists; offer to run learn-app first
+3. If found: follow documented launch path and flows; use documented **Then** outcomes to verify success
+4. Only `describe_ui` when the doc is ambiguous or a step fails
+5. If missing: tell user no map exists; offer to run learn-app first
 
 Prefer documented `label`/`identifier` over guessing. Fall back to `describe_ui` + reasoning when UI changed.
 

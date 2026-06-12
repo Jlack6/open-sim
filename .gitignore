@@ -4,3 +4,7 @@ build/
 *.log
 .DS_Store
 knowledge/
+test_cases/apps/
+
+# Accidental simctl screenshot output (filename is literally "-")
+-

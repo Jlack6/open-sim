@@ -23,7 +23,7 @@ Incrementally improve `knowledge/apps/<slug>.md` from what you just did in this 
 
 From chat context: display name, bundle ID, or slug. Slug = lowercase with hyphens (`Scrib` → `scrib`).
 
-Target: `knowledge/apps/<slug>.md`
+Target: `knowledge/apps/<slug>.md` and optionally `test_cases/apps/<slug>.md`
 
 If missing, run **learn-app** first or create from [learn-app/template.md](../learn-app/template.md).
 
@@ -60,11 +60,15 @@ Read the existing file. Apply **surgical edits** only:
 - Include **failure lessons** (e.g. MCP timeout ≠ action failed — verify before retrying)
 - Disambiguate colliding labels (nav `Done` vs tab `Done`)
 
+### 3b. Update test cases (when flow is regression-worthy)
+
+If you added or materially changed a flow worth regression-testing, run **add-test-case-from-chat** or add/update a case in `test_cases/apps/<slug>.md` (see [test_cases/template.md](../../test_cases/template.md)).
+
 ### 4. Report to user
 
 Short summary:
-- File updated
-- What was added (flows, elements, gotchas)
+- Files updated (`knowledge/` and/or `test_cases/`)
+- What was added (flows, test cases, elements, gotchas)
 - What remains in "Not yet explored"
 
 ## What to capture (examples)

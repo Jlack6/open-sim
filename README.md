@@ -76,7 +76,7 @@ After `launch_app`, the bundle ID is remembered — you don't need to repeat it 
 
 open-sim can drive any app with zero hardcoding, but **exploring an app from scratch every time is slow** — each `describe_ui` call takes several seconds, and the agent may need many of them to find the right button or flow.
 
-This repo adds a **local knowledge layer** and two **Cursor skills** so the agent learns an app once and reuses that context on every future task.
+This repo adds a **local knowledge layer** and **Cursor skills** so the agent learns an app once and reuses that context on every future task.
 
 ### How it fits together
 
@@ -94,10 +94,13 @@ First time with an app          Every task after that
 | Piece | Location | In git? |
 |-------|----------|---------|
 | App maps (flows, labels, gotchas) | `knowledge/apps/<slug>.md` | No — gitignored, local to your machine |
+| Test case template (conventions, structure) | `test_cases/template.md` | Yes — shared with the repo |
+| Executable test cases (Given/When/Then) | `test_cases/apps/<slug>.md` | No — gitignored, local to your machine |
 | **learn-app** skill | `.cursor/skills/learn-app/` | Yes — shared with the repo |
 | **update-knowledge-from-chat** skill | `.cursor/skills/update-knowledge-from-chat/` | Yes — shared with the repo |
+| **add-test-case-from-chat** skill | `.cursor/skills/add-test-case-from-chat/` | Yes — shared with the repo |
 
-Knowledge files read like **test cases**: launch path, tab bar, step-by-step flows (`tap Add` → `type` → `Create Reminder`), exact labels and identifiers, and gotchas (e.g. MCP timeouts that still succeeded).
+Knowledge files capture navigation maps, element references, and informal flows. **Test case** files in `test_cases/apps/` distill the same flows into numbered, runnable scenarios (`TC-SCRIB-001`, etc.) with explicit Given/When/Then steps and verification criteria — useful for regression checks and agent self-verification after automation.
 
 ### Why it speeds things up
 
@@ -139,7 +142,23 @@ The agent **merges** deltas into the existing file (new flows, elements, correct
 3. **Agent reads knowledge first** — if `knowledge/apps/scrib.md` exists, it plans from that file.
 4. **Update after novel work** — ask to update knowledge when the agent figured out something new (edit mode, delete flow, etc.).
 
-Knowledge is **local only** (`knowledge/` is in `.gitignore`). Each developer builds their own maps for the apps they use. Skills in `.cursor/skills/` are committed so everyone gets the same workflows.
+Knowledge maps are **local only** (`knowledge/` is gitignored). Per-app test suites in `test_cases/apps/` are local too; the shared **template** at `test_cases/template.md` is committed so everyone uses the same conventions (IDs, timeout, Given/When/Then format). Skills in `.cursor/skills/` are committed as well.
+
+### Test cases
+
+```
+test_cases/
+  template.md          # in git — copy when adding a new app
+  apps/                # gitignored — local suites per app
+    scrib.md
+    safari.md
+```
+
+When learning or updating an app, add or extend test cases for flows worth re-running (smoke + regression). The agent can read `test_cases/apps/<slug>.md` before a task to know what “done” looks like, or after automation to verify against the **Then** clauses.
+
+Each test case has a **3-minute global timeout**: clock starts on the first **When** step; if **Then** is not verified in time, the case fails and the run moves on.
+
+Use **add-test-case-from-chat** to capture flows from a session into `test_cases/apps/<slug>.md` (asks which cases to add when several are candidates).
 
 ### Example prompts (with knowledge)
 
