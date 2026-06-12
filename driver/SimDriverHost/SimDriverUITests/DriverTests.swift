@@ -1,4 +1,5 @@
 import XCTest
+import ObjectiveC
 
 final class DriverTests: XCTestCase {
     private var app: XCUIApplication!
@@ -8,6 +9,7 @@ final class DriverTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
+        Quiescence.disable()
     }
 
     func testRunCommand() throws {
@@ -193,9 +195,13 @@ final class DriverTests: XCTestCase {
                 return fail("tap", bundle: bundle, screen: screen,
                             "No element matched query: \(queryDescription(query))")
             }
+            // Snapshot the element's info BEFORE tapping. The tap can mutate or remove
+            // the element (edit toggles, row deletes, sheet dismiss); re-reading it
+            // afterward forces a fresh accessibility snapshot that throws — and crashes
+            // the daemon — now that the post-event quiescence wait is disabled.
+            let matched = AccessibilityWalker.toElementInfo(el, index: 0)
             // Coordinate tap is more reliable for home screen icons and distant elements.
             el.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            let matched = AccessibilityWalker.toElementInfo(el, index: 0)
             return UIResult(success: true, action: "tap", bundleId: bundle, screen: screen,
                             elements: nil, matched: matched, error: nil, text: nil)
         }
@@ -244,13 +250,15 @@ final class DriverTests: XCTestCase {
             guard let el = ElementFinder.find(query: query, in: app, bundleId: activeBundleId) else {
                 return fail("type", bundle: bundle, screen: screen, "No element matched query")
             }
+            // Capture info before typing — re-reading after can throw mid-transition.
+            let matched = AccessibilityWalker.toElementInfo(el, index: 0)
             el.tap()
             if let existing = el.value as? String, !existing.isEmpty {
                 el.clearText()
             }
             el.typeText(text)
             return UIResult(success: true, action: "type", bundleId: bundle, screen: screen,
-                            elements: nil, matched: AccessibilityWalker.toElementInfo(el, index: 0),
+                            elements: nil, matched: matched,
                             error: nil, text: text)
         }
 
@@ -267,9 +275,10 @@ final class DriverTests: XCTestCase {
     private func performLongPress(_ command: UICommand, screen: ScreenInfo, bundle: String?) -> UIResult {
         let duration = command.duration ?? 1.0
         if let query = command.query, let el = ElementFinder.find(query: query, in: app, bundleId: activeBundleId) {
+            let matched = AccessibilityWalker.toElementInfo(el, index: 0)
             el.press(forDuration: duration)
             return UIResult(success: true, action: "longPress", bundleId: bundle, screen: screen,
-                            elements: nil, matched: AccessibilityWalker.toElementInfo(el, index: 0),
+                            elements: nil, matched: matched,
                             error: nil, text: nil)
         }
         guard let x = command.x, let y = command.y else {
@@ -302,5 +311,53 @@ private extension XCUIElement {
         guard let stringValue = value as? String, !stringValue.isEmpty else { return }
         let deleteString = String(repeating: XCUIKeyboardKey.delete.rawValue, count: stringValue.count)
         typeText(deleteString)
+    }
+}
+
+// MARK: - Quiescence suppression
+//
+// After every gesture, XCUITest blocks inside "Wait for app to idle" until the
+// app reports it has finished all animations and its main run loop is quiescent.
+// Apps that animate on a mutation (e.g. a SwiftUI List row deletion or a sheet
+// dismiss) often don't settle quickly, so the gesture lands instantly but the
+// wait outlives our host's command timeout — surfacing as a 10s "Command timed
+// out" on every such tap.
+//
+// There is no public API to disable this. We take the same approach as
+// WebDriverAgent/Appium: swizzle XCUIApplicationProcess's quiescence wait into a
+// no-op so taps return as soon as the event is synthesized. Element existence
+// checks in ElementFinder still gate every action, so we don't lose safety —
+// only the open-ended idle wait.
+enum Quiescence {
+    private static var didDisable = false
+
+    static func disable() {
+        guard !didDisable else { return }
+        didDisable = true
+
+        guard let cls = NSClassFromString("XCUIApplicationProcess") else {
+            FileHandle.standardError.write(Data("[open-sim] XCUIApplicationProcess not found; quiescence wait left intact\n".utf8))
+            return
+        }
+
+        // Selector name has been stable across recent Xcode versions; try known variants.
+        let candidates = [
+            "waitForQuiescenceIncludingAnimationsIdle:",
+            "_waitForQuiescenceIncludingAnimationsIdle:",
+        ]
+
+        var patched = false
+        for name in candidates {
+            let sel = NSSelectorFromString(name)
+            guard let method = class_getInstanceMethod(cls, sel) else { continue }
+            // Block receives (self, BOOL) and does nothing — _cmd is omitted for blocks.
+            let noop: @convention(block) (AnyObject, Bool) -> Void = { _, _ in }
+            method_setImplementation(method, imp_implementationWithBlock(noop))
+            patched = true
+        }
+
+        if !patched {
+            FileHandle.standardError.write(Data("[open-sim] quiescence selector not found; idle wait left intact\n".utf8))
+        }
     }
 }

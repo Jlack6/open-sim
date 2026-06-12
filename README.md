@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="assets/logo.png" alt="open-sim logo" width="280">
+</p>
+
+<p align="center"><em>Meet Scratchy — the iguana who drives your simulator.</em></p>
+
 # open-sim
 
 A custom **Model Context Protocol (MCP)** server that lets Claude drive the **iOS Simulator** end-to-end — device control via `simctl`, and **in-app UI** via a generic XCUITest driver.
@@ -154,8 +160,19 @@ results to `result.json`.
 |--------|------------------------------|--------------------------|
 | First command | ~20-25s | ~13s (one-time) |
 | Tap | ~20-25s | ~2-3s |
-| describe_ui | ~25-30s | ~4-7s |
-| 6-command flow | ~120-150s | ~30s |
+| describe_ui | ~25-30s | ~0.5s |
+| 6-command flow | ~120-150s | ~10s |
+
+### Fast `describe_ui` (single snapshot)
+
+Reading a property off a *live* `XCUIElement` (`label`, `frame`, `isHittable`, …) is a separate
+cross-process call each time. Walking a screen property-by-property meant hundreds of round-trips
+(~4-7s). Instead `describe_ui` takes **one `app.snapshot()`** — the whole accessibility tree in a
+single call — and reads everything from memory. The only property a snapshot can't provide is
+`isHittable` (it needs live hit-testing), so that's refined with a small, capped set of live checks
+on just the interactive elements worth tapping. Net result: accurate output in ~0.5s instead of
+several seconds, so multi-step app flows feel interactive. If `snapshot()` is ever unavailable the
+driver falls back to the older live walk automatically.
 
 The daemon stays alive for 15 min of idle time, then exits; the next command respawns
 it automatically. It's also respawned if the simulator restarts or the device changes.

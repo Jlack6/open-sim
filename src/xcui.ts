@@ -17,7 +17,7 @@ const COMMAND_TMP = join(ACTIVE_DIR, "command.json.tmp");
 const DAEMON_LOG = join(ROOT, "build", "driver", "daemon.log");
 
 const DAEMON_READY_TIMEOUT_MS = 30_000; // cold attach ~13–20s; below this false-fails on slow machines
-const COMMAND_TIMEOUT_MS = 10_000; // taps ~2s, describe ~7s
+const COMMAND_TIMEOUT_MS = 10_000; // safety ceiling; taps ~0.3s (quiescence wait disabled), describe ~0.5s
 const POLL_MS = 15;
 
 export interface ElementQuery {
