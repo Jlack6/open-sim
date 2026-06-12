@@ -2,7 +2,7 @@
   <img src="assets/logo.png" alt="open-sim logo" width="280">
 </p>
 
-<p align="center"><em>Meet Scratchy — the iguana who drives your simulator.</em></p>
+<p align="center"><em>Meet Scratchy — the iguana who drives your simulator. He really likes when people ⭐ the project.</em></p>
 
 # open-sim
 
@@ -244,6 +244,12 @@ npm run watch          # recompile TypeScript on change
 npm run build:driver   # rebuild after Swift changes
 npm run typecheck
 ```
+
+---
+
+<p align="center">
+  If open-sim is useful to you, a ⭐ on GitHub helps others find it — and keeps Scratchy happy.
+</p>
 
 ## License
 
