@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Ensure commits use GitHub's private noreply email before every push.
+ROOT="$(git rev-parse --show-toplevel)"
+exec "$ROOT/scripts/use-private-git-email.sh" --quiet
