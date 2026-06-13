@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="open-sim logo" width="280">
+  <img src="web/assets/logo.png" alt="open-sim logo" width="280">
 </p>
 
 <p align="center"><em>Meet Scratchy — the iguana who drives your simulator. He really likes when people ⭐ the project.</em></p>
@@ -8,7 +8,17 @@
 
 A custom **Model Context Protocol (MCP)** server that lets Claude drive the **iOS Simulator** end-to-end — device control via `simctl`, and **in-app UI** via a generic XCUITest driver.
 
+**Website:** [jlack6.github.io/open-sim](https://jlack6.github.io/open-sim/) — deploy manually via **Actions → Deploy website → Run workflow** when `web/` is ready.
+
 No hardcoded apps or labels. Claude looks at what's on screen, decides what to do, and acts.
+
+## Demo
+
+<p align="center">
+  <img src="web/assets/highres.gif" alt="open-sim driving the iOS Simulator from Cursor — Claude creates reminders in-app while the MCP server streams tool calls in the terminal" width="100%">
+</p>
+
+<p align="center"><em>open-sim driving the iOS Simulator from Cursor — Claude reads the screen and acts, with the MCP server's tool calls streaming in the terminal.</em></p>
 
 ## Requirements
 
@@ -37,12 +47,21 @@ npm run build          # compile MCP server
 {
   "mcpServers": {
     "open-sim": {
-      "command": "node",
-      "args": ["${workspaceFolder}/dist/index.js"]
+      "command": "/opt/homebrew/bin/node",
+      "args": ["${workspaceFolder}/dist/index.js"],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
+      }
     }
   }
 }
 ```
+
+The explicit `command` path and `PATH` env are there because Cursor (a GUI app) often
+launches MCP servers with a minimal environment that omits Homebrew and the directory
+holding `node`. If `node` is on your default `PATH` you can simplify `command` to just
+`"node"` and drop the `env` block. Adjust `/opt/homebrew/bin/node` to wherever your
+`node` lives (`which node`) — e.g. `/usr/local/bin/node` on Intel Macs.
 
 Open this folder in Cursor → **Settings → MCP** → enable `open-sim`.
 
@@ -306,6 +325,27 @@ npm run build:driver   # rebuild after Swift changes
 npm run typecheck
 ```
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, project layout, and the pre-PR checklist. Found a security issue? Please report it privately per [SECURITY.md](SECURITY.md) rather than opening a public issue.
+
+## Disclaimer & safety
+
+open-sim is provided **as is**, without warranty of any kind (see [License](#license)). Use it at your own risk.
+
+By design, the agent drives your machine on your behalf. Keep in mind:
+
+- **It runs commands and automates the UI.** Tools like `run_simctl` execute arbitrary `xcrun simctl` subcommands, and the UI tools tap, type, and swipe wherever the agent decides. Review what you ask it to do.
+- **Some actions are destructive.** `delete_device`, `erase_device`, and `uninstall_app` can wipe simulators, app data, and settings with no undo. Double-check before running flows that touch them.
+- **It only targets the iOS Simulator.** open-sim talks to simulators via `simctl`/XCUITest. It is not intended for, and is not tested against, physical devices.
+- **You are responsible for what you automate.** Only automate apps and accounts you own or are authorized to use, and follow the terms of service of any app you drive.
+
+The author is not liable for any data loss, deleted simulators, or other damage resulting from use of this software.
+
+## Trademarks
+
+open-sim is an independent, community project and is **not affiliated with, endorsed by, or sponsored by Apple Inc.** Apple, iOS, iPadOS, Xcode, and Simulator are trademarks of Apple Inc., registered in the U.S. and other countries. Cursor and Claude are trademarks of their respective owners. These names are used only to describe what the software interoperates with.
+
 ---
 
 <p align="center">
@@ -314,4 +354,4 @@ npm run typecheck
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
