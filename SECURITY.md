@@ -24,3 +24,16 @@ open-sim runs locally on your machine and intentionally executes commands (`simc
 - open-sim is driven by an AI agent that decides which tools to call. Treat the agent's actions as you would any automation with access to your developer environment, and only point it at apps and data you're authorized to use.
 
 Reports that highlight unexpected command execution beyond the documented tool surface, path/argument injection, or unsafe handling of untrusted input are especially appreciated.
+
+## Keeping local data off GitHub
+
+This repo is public. **Git hooks** (`.githooks/pre-commit` and `.githooks/pre-push`) run automatically after you enable them with `./scripts/use-private-git-email.sh`. They block commits and pushes that contain:
+
+- Personal home-directory paths (e.g. `/Users/yourname/...`)
+- Private email addresses
+- Common secret formats (API keys, tokens, private keys)
+- Local-only paths: `knowledge/`, `test_cases/apps/`, `.env*`
+
+The **Deploy website** Action only checks out the public repo and uploads `web/` — it never sees your local machine, `knowledge/`, or simulator state. On public repos, **Action logs are visible to everyone**, but this workflow has no secrets and does not echo environment variables from your computer.
+
+Run `./scripts/check-no-secrets.sh --tracked` anytime to scan the committed tree.

@@ -23,4 +23,9 @@ if [[ "$QUIET" != true ]]; then
   git config --local --get user.name
   git config --local --get user.email
   echo "Git hooks enabled from .githooks/ (pre-commit + pre-push)"
+  echo "  → private noreply email on every commit/push"
+  echo "  → blocks secrets, personal paths, and local-only files before push"
+  echo "open-sim: ✓ private git email configured"
+else
+  echo "open-sim: ✓ private git email OK"
 fi

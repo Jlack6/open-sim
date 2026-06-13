@@ -6,5 +6,17 @@ build/
 knowledge/
 test_cases/apps/
 
+# Secrets and credentials — never commit
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.key
+
 # Accidental simctl screenshot output (filename is literally "-")
 -

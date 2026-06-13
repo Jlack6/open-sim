@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-# Ensure new commits use GitHub's private noreply email (email is set at commit time).
 ROOT="$(git rev-parse --show-toplevel)"
-exec "$ROOT/scripts/use-private-git-email.sh" --quiet
+"$ROOT/scripts/use-private-git-email.sh" --quiet
+"$ROOT/scripts/check-no-secrets.sh" --staged
+echo "open-sim: ✓ pre-commit checks passed"
