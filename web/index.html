@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>open-sim — MCP server for iOS Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <a href="#" class="nav-brand">
+        <img src="assets/logo.png" alt="" width="36" height="36">
+        <span>open-sim</span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="#install">Install</a></li>
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#knowledge">Knowledge</a></li>
+        <li><a href="#tools">Tools</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img class="hero-logo" src="assets/logo.png" alt="open-sim logo — Scratchy the iguana">
+      <p class="hero-tagline">Meet Scratchy — the iguana who drives your simulator. He really likes when people ⭐ the project.</p>
+      <h1>open-sim</h1>
+      <p class="hero-lead">
+        A custom <strong>Model Context Protocol (MCP)</strong> server that lets Claude drive the
+        <strong>iOS Simulator</strong> end-to-end — device control via <code>simctl</code>, and
+        in-app UI via a generic XCUITest driver.
+      </p>
+      <p class="hero-sub">No hardcoded apps or labels. Claude looks at what's on screen, decides what to do, and acts.</p>
+      <div class="hero-actions">
+        <a href="#install" class="btn btn-primary">Get started</a>
+        <a href="#tools" class="btn btn-secondary">Browse tools</a>
+      </div>
+    </section>
+
+    <section id="requirements" class="section">
+      <h2>Requirements</h2>
+      <ul class="check-list">
+        <li>macOS with <strong>Xcode</strong> installed (<code>xcrun simctl</code> + XCUITest)</li>
+        <li><strong>Node.js 18+</strong></li>
+      </ul>
+    </section>
+
+    <section id="install" class="section">
+      <h2>Install &amp; build</h2>
+      <div class="code-block">
+        <pre><code>npm install
+npm run build:all    # builds XCUITest driver + Node server</code></pre>
+        <button class="copy-btn" data-copy="npm install&#10;npm run build:all">Copy</button>
+      </div>
+      <p>Or separately:</p>
+      <div class="code-block">
+        <pre><code>npm run build:driver   # compile SimDriverUITests (first time / after Swift changes)
+npm run build          # compile MCP server</code></pre>
+        <button class="copy-btn" data-copy="npm run build:driver&#10;npm run build">Copy</button>
+      </div>
+    </section>
+
+    <section id="cursor" class="section">
+      <h2>Connect to Cursor</h2>
+      <p><code>.cursor/mcp.json</code> is already configured:</p>
+      <div class="code-block">
+        <pre><code>{
+  "mcpServers": {
+    "open-sim": {
+      "command": "node",
+      "args": ["${workspaceFolder}/dist/index.js"]
+    }
+  }
+}</code></pre>
+        <button class="copy-btn" data-copy='{"mcpServers":{"open-sim":{"command":"node","args":["${workspaceFolder}/dist/index.js"]}}}'>Copy</button>
+      </div>
+      <p>Open this folder in Cursor → <strong>Settings → MCP</strong> → enable <code>open-sim</code>.</p>
+    </section>
+
+    <section id="how-it-works" class="section">
+      <h2>How it works</h2>
+      <p class="section-intro"><strong>Nothing is baked in per app.</strong> The server exposes generic primitives. Claude reasons about whatever is on screen.</p>
+      <div class="flow-diagram">
+        <pre>You: "Open Settings and turn on Airplane Mode"
+         ↓
+Claude: boot_device → launch_app / open_url / ui_tap
+         describe_ui  → reads accessibility tree (labels, frames, types)
+         screenshot   → sees the screen
+         ui_tap       → taps by labelContains:"Airplane" or coordinates
+         screenshot   → verifies</pre>
+      </div>
+
+      <h3>Targeting options</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Method</th><th>Example</th><th>When to use</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>labelContains</code></td><td>"Settings", "Sign In"</td><td>Most common — uses visible text</td></tr>
+            <tr><td><code>identifier</code></td><td>"Safari", "email_field"</td><td>When accessibility identifiers exist</td></tr>
+            <tr><td><code>type</code></td><td>button, switch, textField</td><td>Filter by element kind</td></tr>
+            <tr><td><code>x</code> / <code>y</code> (0–1)</td><td>x: 0.5, y: 0.9</td><td>Coordinates from screenshot + screen size</td></tr>
+            <tr><td><code>ui_swipe</code></td><td>direction: "left"</td><td>Navigate home screen pages, scroll lists</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>After <code>launch_app</code>, the bundle ID is remembered — you don't need to repeat it for UI tools.</p>
+    </section>
+
+    <section id="knowledge" class="section">
+      <h2>App knowledge &amp; skills</h2>
+      <p class="section-intro">
+        open-sim can drive any app with zero hardcoding, but exploring an app from scratch every time is slow.
+        This repo adds a <strong>local knowledge layer</strong> and <strong>Cursor skills</strong> so the agent learns an app once and reuses that context.
+      </p>
+
+      <div class="flow-diagram">
+        <pre>First time with an app          Every task after that
+        ↓                                ↓
+   learn-app skill              read knowledge/apps/&lt;app&gt;.md
+   explore via open-sim          follow documented flows
+   save to knowledge/            fewer describe_ui calls
+        ↓                                ↓
+   update-knowledge-from-chat    patch doc after each session
+   (merge new learnings)          agent keeps getting smarter</pre>
+      </div>
+
+      <h3>Knowledge layer</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Piece</th><th>Location</th><th>In git?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>App maps (flows, labels, gotchas)</td><td><code>knowledge/apps/&lt;slug&gt;.md</code></td><td>No</td></tr>
+            <tr><td>Test case template</td><td><code>test_cases/template.md</code></td><td>Yes</td></tr>
+            <tr><td>Executable test cases</td><td><code>test_cases/apps/&lt;slug&gt;.md</code></td><td>No</td></tr>
+            <tr><td><strong>learn-app</strong> skill</td><td><code>.cursor/skills/learn-app/</code></td><td>Yes</td></tr>
+            <tr><td><strong>update-knowledge-from-chat</strong></td><td><code>.cursor/skills/update-knowledge-from-chat/</code></td><td>Yes</td></tr>
+            <tr><td><strong>add-test-case-from-chat</strong></td><td><code>.cursor/skills/add-test-case-from-chat/</code></td><td>Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cards">
+        <article class="card">
+          <h3>learn-app</h3>
+          <p>First time mapping an app, or a full refresh. Explores tabs, screens, and key flows, then writes <code>knowledge/apps/&lt;slug&gt;.md</code>.</p>
+          <p class="card-prompt">"Learn the Scrib app"</p>
+        </article>
+        <article class="card">
+          <h3>update-knowledge-from-chat</h3>
+          <p>After a session where the agent discovered something new. Merges deltas into the existing file — does not replace the whole doc.</p>
+          <p class="card-prompt">"Update Scrib knowledge from what we just did"</p>
+        </article>
+        <article class="card">
+          <h3>add-test-case-from-chat</h3>
+          <p>Captures flows worth regression-testing as numbered cases. Creates or updates <code>test_cases/apps/&lt;slug&gt;.md</code> from the template.</p>
+          <p class="card-prompt">"Add test cases from this chat for Scrib"</p>
+        </article>
+      </div>
+
+      <h3 id="test-cases">Test cases</h3>
+      <p>Numbered, runnable scenarios (<code>TC-SCRIB-001</code>, etc.) with <strong>Does</strong> / <strong>Expected</strong> summaries plus Given/When/Then steps.</p>
+      <ul class="feature-list">
+        <li><strong>3-minute timeout</strong> per case — clock starts on first When step</li>
+        <li><strong>Last run</strong> table tracks pass/fail counts and total suite run time</li>
+        <li><strong>ui_act</strong> batches fragile flows (share sheets, compose modals) in one session</li>
+        <li>No built-in runner — the agent executes cases via open-sim MCP tools</li>
+      </ul>
+    </section>
+
+    <section id="performance" class="section">
+      <h2>Performance</h2>
+      <p class="section-intro">
+        A persistent XCUITest daemon keeps the runner warm — reading commands from
+        <code>/tmp/open-sim/active/command.json</code> instead of cold-starting on every tap.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Action</th><th>Cold start (old)</th><th>Persistent daemon</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>First command</td><td>~20–25s</td><td>~13s (one-time)</td></tr>
+            <tr><td>Tap</td><td>~20–25s</td><td>~2–3s</td></tr>
+            <tr><td>describe_ui</td><td>~25–30s</td><td>~0.5s</td></tr>
+            <tr><td>6-command flow</td><td>~120–150s</td><td>~10s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>describe_ui</code> uses a single <code>app.snapshot()</code> for the whole accessibility tree (~0.5s instead of several seconds). Batch related actions with <code>ui_act</code> to share a single round-trip.</p>
+    </section>
+
+    <section id="prompts" class="section">
+      <h2>Example prompts</h2>
+      <div class="prompt-grid">
+        <div>
+          <h3>Simulator</h3>
+          <ul>
+            <li>"Boot iPhone 17 Pro, show me what's on the home screen."</li>
+            <li>"Tap Settings, describe what's on screen, then toggle the first switch."</li>
+            <li>"Launch com.example.MyApp, type hello@example.com into the email field."</li>
+            <li>"Set dark mode, override status bar to 9:41 with full battery, screenshot."</li>
+          </ul>
+        </div>
+        <div>
+          <h3>App knowledge</h3>
+          <ul>
+            <li>"Learn the Scrib app."</li>
+            <li>"Go to Scrib and make a reminder to say hi to mom."</li>
+            <li>"Update Scrib knowledge from this chat."</li>
+            <li>"Run the Scrib test cases."</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="tools" class="section">
+      <h2>Tools</h2>
+
+      <h3>Device &amp; OS (<code>simctl</code>)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>list_devices</code></td><td>List simulators + state + UDIDs</td></tr>
+            <tr><td><code>boot_device</code> / <code>shutdown_device</code></td><td>Boot or shut down</td></tr>
+            <tr><td><code>open_simulator</code></td><td>Open the Simulator GUI</td></tr>
+            <tr><td><code>install_app</code> / <code>launch_app</code> / <code>terminate_app</code></td><td>App lifecycle</td></tr>
+            <tr><td><code>screenshot</code></td><td>Capture screen (returns image)</td></tr>
+            <tr><td><code>set_location</code> / <code>set_privacy</code> / <code>set_appearance</code></td><td>Environment</td></tr>
+            <tr><td><code>set_status_bar</code> / <code>push_notification</code></td><td>Status bar &amp; push</td></tr>
+            <tr><td><code>run_simctl</code></td><td>Raw simctl escape hatch</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>In-app UI (XCUITest — any app)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>describe_ui</code></td><td>Accessibility tree: labels, types, frames, hittable state</td></tr>
+            <tr><td><code>ui_tap</code></td><td>Tap by query or normalized coordinates</td></tr>
+            <tr><td><code>ui_swipe</code></td><td>Swipe direction or drag between coordinate pairs</td></tr>
+            <tr><td><code>ui_type</code></td><td>Type text; optionally focus a field first</td></tr>
+            <tr><td><code>ui_long_press</code></td><td>Long press element or coordinate</td></tr>
+            <tr><td><code>ui_wait</code></td><td>Pause for animations/loading</td></tr>
+            <tr><td><code>ui_act</code></td><td>Run up to 20 actions in one session (keeps share sheets open)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="architecture" class="section">
+      <h2>Architecture</h2>
+      <div class="flow-diagram">
+        <pre>Claude (Cursor MCP)
+    ↓ stdio
+open-sim (Node) ── simctl ──→ device/OS control
+    ↓ spawns once: xcodebuild test-without-building (daemon)
+SimDriverUITests (Swift) ── poll loop ──→ tap / swipe / type / describe on any app</pre>
+      </div>
+      <p>The XCUITest driver lives in <code>driver/SimDriverHost/</code>. No app-specific logic.</p>
+
+      <h3>Development</h3>
+      <div class="code-block">
+        <pre><code>npm run watch          # recompile TypeScript on change
+npm run build:driver   # rebuild after Swift changes
+npm run typecheck</code></pre>
+        <button class="copy-btn" data-copy="npm run watch&#10;npm run build:driver&#10;npm run typecheck">Copy</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <img src="assets/logo.png" alt="" width="48" height="48" class="footer-logo">
+    <p>If open-sim is useful to you, a ⭐ on GitHub helps others find it — and keeps Scratchy happy.</p>
+    <p class="license">MIT License</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

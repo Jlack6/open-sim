@@ -100,7 +100,7 @@ First time with an app          Every task after that
 | **update-knowledge-from-chat** skill | `.cursor/skills/update-knowledge-from-chat/` | Yes — shared with the repo |
 | **add-test-case-from-chat** skill | `.cursor/skills/add-test-case-from-chat/` | Yes — shared with the repo |
 
-Knowledge files capture navigation maps, element references, and informal flows. **Test case** files in `test_cases/apps/` distill the same flows into numbered, runnable scenarios (`TC-SCRIB-001`, etc.) with explicit Given/When/Then steps and verification criteria — useful for regression checks and agent self-verification after automation.
+Knowledge files capture navigation maps, element references, and informal flows. **Test case** files in `test_cases/apps/` distill the same flows into numbered, runnable scenarios (`TC-SCRIB-001`, etc.) with **Does** / **Expected** summaries plus Given/When/Then steps — useful for regression checks and agent self-verification after automation.
 
 ### Why it speeds things up
 
@@ -135,6 +135,17 @@ The agent uses open-sim to explore tabs, screens, and key flows, then writes `kn
 
 The agent **merges** deltas into the existing file (new flows, elements, corrections) — it does not replace the whole doc.
 
+#### add-test-case-from-chat
+
+**When:** After a session where you walked a flow worth regression-testing and want it saved as a numbered case.
+
+**Prompt examples:**
+- "Add test cases from this chat for Scrib"
+- "Save the coffee reminder flow as a test case"
+- `/add-test-case-from-chat` — then pick from proposed cases when several are candidates
+
+Creates or updates `test_cases/apps/<slug>.md` from the committed template. Does **not** update `knowledge/` — use **update-knowledge-from-chat** for that.
+
 ### Using knowledge day to day
 
 1. **Teach an app once** — ask the agent to learn an app you automate often.
@@ -142,7 +153,7 @@ The agent **merges** deltas into the existing file (new flows, elements, correct
 3. **Agent reads knowledge first** — if `knowledge/apps/scrib.md` exists, it plans from that file.
 4. **Update after novel work** — ask to update knowledge when the agent figured out something new (edit mode, delete flow, etc.).
 
-Knowledge maps are **local only** (`knowledge/` is gitignored). Per-app test suites in `test_cases/apps/` are local too; the shared **template** at `test_cases/template.md` is committed so everyone uses the same conventions (IDs, timeout, Given/When/Then format). Skills in `.cursor/skills/` are committed as well.
+Knowledge maps are **local only** (`knowledge/` is gitignored). Per-app test suites in `test_cases/apps/` are local too; the shared **template** at `test_cases/template.md` is committed so everyone uses the same conventions. Skills in `.cursor/skills/` are committed as well.
 
 ### Test cases
 
@@ -156,9 +167,38 @@ test_cases/
 
 When learning or updating an app, add or extend test cases for flows worth re-running (smoke + regression). The agent can read `test_cases/apps/<slug>.md` before a task to know what “done” looks like, or after automation to verify against the **Then** clauses.
 
-Each test case has a **3-minute global timeout**: clock starts on the first **When** step; if **Then** is not verified in time, the case fails and the run moves on.
+#### Case structure
 
-Use **add-test-case-from-chat** to capture flows from a session into `test_cases/apps/<slug>.md` (asks which cases to add when several are candidates).
+Each case in `test_cases/template.md` follows this shape:
+
+| Field | Purpose |
+|-------|---------|
+| **Does** | One plain sentence — what user flow the case exercises |
+| **Expected** | One plain sentence — what the user should see when it passes |
+| **Tags** | `smoke`, `regression`, `integration`, … |
+| **Given** | Preconditions (app state, tab, data) |
+| **When** | Numbered MCP steps (`launch_app`, `ui_tap`, `ui_act`, …) |
+| **Then** | Machine-verifiable check — specific labels/text for `describe_ui` |
+| **Gotchas** | Optional — flaky steps, label collisions, timeouts |
+
+**Does** / **Expected** are for humans reading the suite; **Then** is what the agent asserts. Keep **Then** aligned with **Expected**.
+
+#### Running a suite
+
+- **Timeout:** **3 minutes** per case. Clock starts on the first **When** step; if **Then** is not verified in time, record FAIL and move on.
+- **Run time:** After a suite run, print total wall-clock time from the first case’s first **When** through the last **Then** verified (or abort). Format: `Xm Ys` (or `Xs` if under 1 minute).
+- **Last run:** Update the **Last run** table at the bottom of the app file with date, pass/fail/timeout counts, total run time, and notes.
+
+There is no built-in test runner — the agent executes cases from the markdown file via open-sim MCP tools.
+
+#### Authoring tips
+
+- **Batch fragile flows with `ui_act`** — share sheets, compose modals, and multi-step wizards stay open in one XCUITest session. `ui_act` skips `simctl launch` so a relaunch does not dismiss the sheet mid-flow.
+- **System UI coordinates** — for share extensions and other UI outside the host app tree, use pixel coords with `normalized=false` (SpringBoard screen space). Values greater than 1 imply pixels automatically.
+- **Verify before retrying** — MCP timeouts (~10s) can be noisy; a `ui_act` may still complete. Use `describe_ui` to check state before repeating a step.
+- **Cross-app cases** — integration tests (e.g. Safari → Scrib share to Feed) document both bundle IDs and which app owns each step.
+
+Use **add-test-case-from-chat** to capture flows from a session (asks which cases to add when several are candidates). **update-knowledge-from-chat** can also sync test cases when a documented flow changes.
 
 ### Example prompts (with knowledge)
 
@@ -166,6 +206,8 @@ Use **add-test-case-from-chat** to capture flows from a session into `test_cases
 - "Go to Scrib and set a reminder to call mom in 5 minutes."
 - "Update Scrib knowledge from what we just did."
 - "In Scrib, delete the current reminder and add a scrib that says third times the try."
+- "Run the Scrib test cases."
+- "Add test cases from this chat for Scrib."
 
 ## Performance (persistent driver)
 
@@ -240,7 +282,7 @@ for debugging. Batch related actions with `ui_act` to share a single round-trip.
 | `ui_type` | Type text; optionally focus a field first via query or coordinates |
 | `ui_long_press` | Long press element or coordinate |
 | `ui_wait` | Pause for animations/loading |
-| `ui_act` | Run up to 20 actions in one XCUITest session (faster) |
+| `ui_act` | Run up to 20 actions in one XCUITest session (faster; keeps share sheets open) |
 
 ## Architecture
 
