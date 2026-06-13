@@ -121,21 +121,6 @@ strong {
   text-decoration: none;
 }
 
-.nav-links .btn-nav {
-  padding: 0.45rem 1rem;
-  font-size: 0.88rem;
-  background: var(--bg-card);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.nav-links .btn-nav:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: none;
-}
-
 .nav-toggle {
   display: none;
   flex-direction: column;
@@ -170,18 +155,23 @@ main {
   padding: 3rem 0 4rem;
 }
 
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .hero-logo {
   width: min(280px, 70vw);
   height: auto;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
   filter: drop-shadow(0 0 40px var(--accent-glow));
 }
 
 .hero-repo {
-  display: inline-block;
-  margin-bottom: 1rem;
   font-family: var(--mono);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--accent);
   text-decoration: none;
