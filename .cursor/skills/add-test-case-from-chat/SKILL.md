@@ -85,6 +85,10 @@ Append (or insert before `## Not covered yet`) using this shape:
 ```markdown
 ### TC-<SLUG>-###: <Short title>
 
+**Does:** <One sentence — what this case exercises.>
+
+**Expected:** <One sentence — observable outcome when it passes.>
+
 **Tags:** smoke | regression | …
 
 **Given:** <preconditions>
@@ -102,8 +106,9 @@ Append (or insert before `## Not covered yet`) using this shape:
 
 **Rules:**
 
+- **Does** / **Expected** = plain English; one sentence each
 - **When** steps = open-sim MCP tool names with concrete args from the session
-- **Then** = one verifiable assertion (what `describe_ui` should show)
+- **Then** = one verifiable assertion (what `describe_ui` should show); should match **Expected**
 - Inherit **3-minute global timeout** from Conventions (do not repeat per case unless overriding)
 - Avoid duplicating an existing case — update the matching case if the flow changed
 - If a flow is now covered, remove or trim the matching bullet under **Not covered yet**
@@ -125,6 +130,7 @@ Before saving each case:
 
 - [ ] App slug and bundle ID correct
 - [ ] Next ID not colliding with existing cases
+- [ ] **Does** and **Expected** are one clear sentence each
 - [ ] **Given** sets up only what the case needs (not whole suite state)
 - [ ] **When** uses exact labels/identifiers/types from the session
 - [ ] **Then** is observable (not vague "works")
@@ -135,7 +141,7 @@ Before saving each case:
 
 | Skill | Scope |
 |-------|-------|
-| **learn-app** | Cold exploration; may seed initial test cases |
+| **learn-app** | Cold exploration → `knowledge/apps/` only |
 | **update-knowledge-from-chat** | Patch `knowledge/apps/`; optionally touch tests |
 | **add-test-case-from-chat** | Add/update `test_cases/apps/` only, with user pick when ambiguous |
 

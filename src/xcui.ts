@@ -286,7 +286,12 @@ export async function runUICommand(
 
   // simctl launch reliably switches apps from the host. XCUITest launch() inside the
   // daemon crashes the runner when another app is foreground — use simctl instead.
-  if (resolvedBundle && resolvedBundle !== "com.apple.springboard") {
+  // Skip for batched scripts: relaunching dismisses share sheets / compose modals mid-flow.
+  if (
+    resolvedBundle &&
+    resolvedBundle !== "com.apple.springboard" &&
+    command.action !== "script"
+  ) {
     await run("xcrun", ["simctl", "launch", deviceName, resolvedBundle]);
   }
 

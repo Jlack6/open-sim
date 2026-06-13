@@ -94,4 +94,14 @@ enum ElementFinder {
         return app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: px, dy: py))
     }
+
+    /// Pixel taps on SpringBoard — hits share-extension modals and sheets that are not
+    /// visible in the hosting app's accessibility tree (e.g. Scrib compose after Share).
+    static func screenCoordinate(x: Double, y: Double, normalized: Bool, screen: ScreenInfo) -> XCUICoordinate {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let px = normalized ? x * screen.width : x
+        let py = normalized ? y * screen.height : y
+        return springboard.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: px, dy: py))
+    }
 }

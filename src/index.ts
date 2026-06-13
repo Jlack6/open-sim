@@ -973,7 +973,7 @@ server.registerTool(
         timeout: s.timeout ?? s.duration,
         x: s.x,
         y: s.y,
-        normalized: s.normalized ?? (s.x !== undefined ? true : undefined),
+        normalized: s.normalized ?? (s.x !== undefined && s.x <= 1 && s.y !== undefined && s.y <= 1 ? true : false),
         query: toQuery({
           label: s.label,
           labelContains: s.labelContains,

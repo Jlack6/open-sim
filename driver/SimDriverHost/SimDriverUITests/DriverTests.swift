@@ -109,6 +109,18 @@ final class DriverTests: XCTestCase {
         }
     }
 
+    /// Search the active app, then other foreground apps (share extensions), for a query match.
+    private func findElement(query: ElementQuery) -> XCUIElement? {
+        if let el = ElementFinder.find(query: query, in: app, bundleId: activeBundleId) { return el }
+        let candidates = ["scribNotes.scribNotes", "com.apple.mobilesafari"]
+        for id in candidates where id != activeBundleId {
+            let other = XCUIApplication(bundleIdentifier: id)
+            guard other.state == .runningForeground || other.state == .runningBackground else { continue }
+            if let el = ElementFinder.find(query: query, in: other, bundleId: id) { return el }
+        }
+        return nil
+    }
+
     // MARK: - App resolution (no hardcoded UI — only system bundle for home screen fallback)
 
     private func resolveApp(bundleId: String?) -> (app: XCUIApplication, bundleId: String) {
@@ -191,7 +203,7 @@ final class DriverTests: XCTestCase {
 
     private func performTap(_ command: UICommand, screen: ScreenInfo, bundle: String?) -> UIResult {
         if let query = command.query {
-            guard let el = ElementFinder.find(query: query, in: app, bundleId: activeBundleId) else {
+            guard let el = findElement(query: query) else {
                 return fail("tap", bundle: bundle, screen: screen,
                             "No element matched query: \(queryDescription(query))")
             }
@@ -209,7 +221,11 @@ final class DriverTests: XCTestCase {
         guard let x = command.x, let y = command.y else {
             return fail("tap", bundle: bundle, screen: screen, "Provide query or x/y coordinates")
         }
-        let coord = ElementFinder.coordinate(x: x, y: y, normalized: command.normalized ?? false, in: app)
+        let normalized = command.normalized ?? false
+        // Share-extension compose sheets (e.g. Scrib Post) live outside the host app tree.
+        let coord = normalized
+            ? ElementFinder.coordinate(x: x, y: y, normalized: true, in: app)
+            : ElementFinder.screenCoordinate(x: x, y: y, normalized: false, screen: screen)
         coord.tap()
         return UIResult(success: true, action: "tap", bundleId: bundle, screen: screen,
                         elements: nil, matched: nil, error: nil, text: nil)
