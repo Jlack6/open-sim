@@ -141,7 +141,9 @@ Claude: boot_device → launch_app / open_url / ui_tap
    save to knowledge/            fewer describe_ui calls
         ↓                                ↓
    update-knowledge-from-chat    patch doc after each session
-   (merge new learnings)          agent keeps getting smarter</pre>
+   (merge new learnings)          agent keeps getting smarter
+        ↓                                ↓
+   test-plz (pre-push)           diff branch → run tests → coverage %</pre>
       </div>
 
       <h3>Knowledge layer</h3>
@@ -152,11 +154,13 @@ Claude: boot_device → launch_app / open_url / ui_tap
           </thead>
           <tbody>
             <tr><td>App maps (flows, labels, gotchas)</td><td><code>knowledge/apps/&lt;slug&gt;.md</code></td><td>No</td></tr>
+            <tr><td>Repo registry (test-plz)</td><td><code>knowledge/test-plz/registry.md</code></td><td>No</td></tr>
             <tr><td>Test case template</td><td><code>test_cases/template.md</code></td><td>Yes</td></tr>
             <tr><td>Executable test cases</td><td><code>test_cases/apps/&lt;slug&gt;.md</code></td><td>No</td></tr>
             <tr><td><strong>learn-app</strong> skill</td><td><code>.cursor/skills/learn-app/</code></td><td>Yes</td></tr>
             <tr><td><strong>update-knowledge-from-chat</strong></td><td><code>.cursor/skills/update-knowledge-from-chat/</code></td><td>Yes</td></tr>
             <tr><td><strong>add-test-case-from-chat</strong></td><td><code>.cursor/skills/add-test-case-from-chat/</code></td><td>Yes</td></tr>
+            <tr><td><strong>test-plz</strong> skill</td><td><code>.cursor/skills/test-plz/</code></td><td>Yes</td></tr>
           </tbody>
         </table>
       </div>
@@ -177,7 +181,25 @@ Claude: boot_device → launch_app / open_url / ui_tap
           <p>Captures flows worth regression-testing as numbered cases. Creates or updates <code>test_cases/apps/&lt;slug&gt;.md</code> from the template.</p>
           <p class="card-prompt">"Add test cases from this chat for Scrib"</p>
         </article>
+        <article class="card">
+          <h3>test-plz</h3>
+          <p>Pre-push simulator testing: inventories your git diff, maps every simulator-testable change to a test, runs the full plan, and reports pass/fail with a coverage percentage.</p>
+          <p class="card-prompt">"Test plz" or "Test my changes on this branch"</p>
+        </article>
       </div>
+
+      <h3 id="test-plz">test-plz (pre-push testing)</h3>
+      <p>Hands-off verification after local code changes. The agent reads <code>knowledge/test-plz/registry.md</code> for your repo, diffs the branch against <code>main</code>, and builds a <strong>change inventory</strong> — one row per behavior, flagged as user-visible and simulator-testable.</p>
+      <ol class="feature-list">
+        <li><strong>Resolve the repo</strong> — path and app slug from your message or the local registry</li>
+        <li><strong>Inventory every change</strong> — <code>git diff</code> vs base; split files into distinct behaviors</li>
+        <li><strong>Resolve the app</strong> — bundle ID from registry, <code>app.json</code>, or Xcode metadata</li>
+        <li><strong>Read the knowledge map</strong> — <code>knowledge/apps/&lt;slug&gt;.md</code>; runs <strong>learn-app</strong> if missing</li>
+        <li><strong>Build a coverage plan</strong> — existing test cases, knowledge flows, or ad-hoc Given/When/Then per testable row</li>
+        <li><strong>Run all planned tests</strong> on the simulator (3-minute timeout per case)</li>
+        <li><strong>Report results</strong> — pass/fail table, coverage %, pass rate, push confidence, optional findings</li>
+      </ol>
+      <p>Coverage: <code>coverage % = tested / testable</code> where <em>testable</em> is every simulator-reachable behavior from the diff. Any failure or blocked row means <strong>partial</strong> push confidence. Updates the <strong>Last run</strong> table in <code>test_cases/apps/&lt;slug&gt;.md</code> when present.</p>
 
       <h3 id="test-cases">Test cases</h3>
       <p>Numbered, runnable scenarios (<code>TC-SCRIB-001</code>, etc.) with <strong>Does</strong> / <strong>Expected</strong> summaries plus Given/When/Then steps.</p>
@@ -186,6 +208,7 @@ Claude: boot_device → launch_app / open_url / ui_tap
         <li><strong>Last run</strong> table tracks pass/fail counts and total suite run time</li>
         <li><strong>ui_act</strong> batches fragile flows (share sheets, compose modals) in one session</li>
         <li>No built-in runner — the agent executes cases via open-sim MCP tools</li>
+        <li>Say <strong>"Run the &lt;app&gt; test cases"</strong> for a direct suite run, or <strong>"test plz"</strong> for diff-based coverage testing</li>
       </ul>
     </section>
 
@@ -230,6 +253,8 @@ Claude: boot_device → launch_app / open_url / ui_tap
             <li>"Go to Scrib and make a reminder to say hi to mom."</li>
             <li>"Update Scrib knowledge from this chat."</li>
             <li>"Run the Scrib test cases."</li>
+            <li>"Test plz — I changed the reminder save logic."</li>
+            <li>"Test my changes on this branch."</li>
           </ul>
         </div>
       </div>

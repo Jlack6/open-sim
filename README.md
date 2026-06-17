@@ -108,16 +108,20 @@ First time with an app          Every task after that
         ↓                                ↓
    update-knowledge-from-chat    patch doc after each session
    (merge new learnings)          agent keeps getting smarter
+        ↓                                ↓
+   test-plz (pre-push)           diff branch → run tests → coverage %
 ```
 
 | Piece | Location | In git? |
 |-------|----------|---------|
 | App maps (flows, labels, gotchas) | `knowledge/apps/<slug>.md` | No — gitignored, local to your machine |
+| Repo registry (test-plz) | `knowledge/test-plz/registry.md` | No — gitignored, local to your machine |
 | Test case template (conventions, structure) | `test_cases/template.md` | Yes — shared with the repo |
 | Executable test cases (Given/When/Then) | `test_cases/apps/<slug>.md` | No — gitignored, local to your machine |
 | **learn-app** skill | `.cursor/skills/learn-app/` | Yes — shared with the repo |
 | **update-knowledge-from-chat** skill | `.cursor/skills/update-knowledge-from-chat/` | Yes — shared with the repo |
 | **add-test-case-from-chat** skill | `.cursor/skills/add-test-case-from-chat/` | Yes — shared with the repo |
+| **test-plz** skill | `.cursor/skills/test-plz/` | Yes — shared with the repo |
 
 Knowledge files capture navigation maps, element references, and informal flows. **Test case** files in `test_cases/apps/` distill the same flows into numbered, runnable scenarios (`TC-SCRIB-001`, etc.) with **Does** / **Expected** summaries plus Given/When/Then steps — useful for regression checks and agent self-verification after automation.
 
@@ -165,6 +169,46 @@ The agent **merges** deltas into the existing file (new flows, elements, correct
 
 Creates or updates `test_cases/apps/<slug>.md` from the committed template. Does **not** update `knowledge/` — use **update-knowledge-from-chat** for that.
 
+#### test-plz
+
+**When:** You changed app logic locally and want pre-push confidence — or you want a full regression suite run with a coverage report.
+
+**Prompt examples:**
+- "Test plz"
+- "Test my changes on this branch"
+- "Run the react-app-test test cases"
+- `/test-plz` — agent asks for repo path on first use
+
+Hands-off simulator testing after local code changes. The agent inventories **every change** on the branch or commit, exercises **everything the simulator can reach**, and reports pass/fail plus a **coverage percentage** with gaps.
+
+**Workflow:**
+
+1. **Resolve the repo** — from your message or `knowledge/test-plz/registry.md` (path → app slug, bundle ID).
+2. **Inventory every change** — `git diff` vs `main` (plus unstaged/staged); one row per behavior with user-visible and simulator-testable flags.
+3. **Resolve the app** — bundle ID from registry, `app.json`, or Xcode project metadata.
+4. **Read the knowledge map** — `knowledge/apps/<slug>.md`; runs **learn-app** if missing.
+5. **Build a coverage plan** — map each simulator-testable change to an existing test case, a knowledge flow, or an ad-hoc Given/When/Then.
+6. **Run all planned tests** on the simulator via open-sim MCP (3-minute timeout per case).
+7. **Report results** — pass/fail table, coverage %, pass rate, push confidence, and optional findings (bugs, risks, notable UI changes).
+8. **Follow-ups** — offer **add-test-case-from-chat** or **update-knowledge-from-chat** when appropriate.
+
+**Coverage math:**
+
+```
+testable   = rows where Simulator-testable = yes
+tested     = tested-pass + tested-fail + blocked
+coverage % = round(100 × tested / testable)
+pass rate  = round(100 × passed / testable)
+```
+
+If any test fails or rows are blocked, push confidence is **partial** even when coverage is high. Updates the **Last run** table in `test_cases/apps/<slug>.md` when present.
+
+| Skill | Role in test-plz |
+|-------|------------------|
+| **learn-app** | First-time app mapping before testing |
+| **add-test-case-from-chat** | Capture a verified flow after testing |
+| **update-knowledge-from-chat** | Patch map when UI differed from doc |
+
 ### Using knowledge day to day
 
 1. **Teach an app once** — ask the agent to learn an app you automate often.
@@ -210,6 +254,8 @@ Each case in `test_cases/template.md` follows this shape:
 
 There is no built-in test runner — the agent executes cases from the markdown file via open-sim MCP tools.
 
+Ask **"Run the <app> test cases"** to execute a saved suite directly, or **"test plz"** to diff your branch, map changes to tests, run everything simulator-testable, and get a coverage report. See **test-plz** above.
+
 #### Authoring tips
 
 - **Batch fragile flows with `ui_act`** — share sheets, compose modals, and multi-step wizards stay open in one XCUITest session. `ui_act` skips `simctl launch` so a relaunch does not dismiss the sheet mid-flow.
@@ -227,6 +273,8 @@ Use **add-test-case-from-chat** to capture flows from a session (asks which case
 - "In Scrib, delete the current reminder and add a scrib that says third times the try."
 - "Run the Scrib test cases."
 - "Add test cases from this chat for Scrib."
+- "Test plz — I changed the reminder save logic."
+- "Test my changes on this branch."
 
 ## Performance (persistent driver)
 
