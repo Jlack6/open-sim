@@ -28,7 +28,7 @@ No hardcoded apps or labels. Claude looks at what's on screen, decides what to d
 ## Install & build
 
 ```bash
-npm install
+npm ci
 npm run build:all    # builds XCUITest driver + Node server
 ```
 
@@ -373,9 +373,31 @@ npm run build:driver   # rebuild after Swift changes
 npm run typecheck
 ```
 
+## Dependency safety
+
+We publish a living audit of npm dependencies, known CVEs, and supply-chain checks in **[DEPENDENCY-SAFETY.md](DEPENDENCY-SAFETY.md)** — including a **confidence score** and plain-language risks. It is refreshed when the `dependency-safety` Cursor skill runs (after installs or before releases).
+
+Quick checks you can run locally:
+
+```bash
+npm ci
+npm run deps:verify
+.cursor/skills/dependency-safety/scripts/audit-deps.sh
+npm run deps:audit-osv
+./scripts/check-no-secrets.sh --tracked
+```
+
+### Pinning policy
+
+- **Direct deps** — 4 exact versions in `package.json` (no `^`); `.npmrc` sets `save-exact=true`
+- **All transitive deps** — 94 exact `overrides` (`npm run deps:sync` after lockfile changes)
+- **Advisories** — OSV scan on every package (`npm run deps:audit-osv`, included in `deps:verify`)
+- **MCP** — only `@modelcontextprotocol/sdk`
+- **Install** — `npm ci`; after bumps: `npm install` → `deps:sync` → `npm install` → `deps:verify`
+
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, project layout, and the pre-PR checklist. Found a security issue? Please report it privately per [SECURITY.md](SECURITY.md) rather than opening a public issue.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, project layout, and the pre-PR checklist. Found a security issue? Please report it privately per [SECURITY.md](SECURITY.md) rather than opening a public issue. After dependency bumps, re-run dependency safety and update [DEPENDENCY-SAFETY.md](DEPENDENCY-SAFETY.md).
 
 ## Disclaimer & safety
 
